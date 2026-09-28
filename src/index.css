@@ -330,20 +330,24 @@
   .scroll-themed {
     scrollbar-width: thin;
     scrollbar-color: var(--scroll-thumb) transparent;
+  }
+
+  .scroll-themed {
     /* The bookmarks panel changes content height as folders expand/collapse
-       — its own flex box is what scrolls (see the layout column's
-       `max-h-dvh` in App.tsx, which caps it so this growth can't escape to
-       the document and drag the page's background layer with it). Its
-       scrollbar can flash in and out several times over one 150ms animation
-       as layout is recalculated every frame. `stable` reserves the gutter
-       unconditionally, so there's no track appearing/disappearing to
-       flicker and no content-width change alongside it. Applied to `html`
-       too even though the page itself only grows past one screen from
-       *static* content (a short/narrow viewport, or many shortcuts) — never
-       from a folder toggle — so its scrollbar doesn't stand out as the one
-       untreated bar on the rare layout where it does appear. */
+       — its own flex box is what scrolls. Its scrollbar can flash in and out
+       several times over one 150ms animation as layout is recalculated
+       every frame. `stable` reserves the gutter unconditionally, so there's
+       no track appearing/disappearing to flicker and no content-width
+       change alongside it. */
     scrollbar-gutter: stable;
   }
+
+  /* No `scrollbar-gutter: stable` on `html` itself: reserving space
+     unconditionally left a visible gutter on the right of the page even
+     when no scrollbar was needed, and the background layer didn't extend
+     under it. The page only scrolls from static content (short viewport or
+     many shortcuts), not from a folder toggle, so the layout shift when its
+     scrollbar does appear is the accepted trade-off. */
 
   html::-webkit-scrollbar,
   .scroll-themed::-webkit-scrollbar {
