@@ -143,9 +143,9 @@ function AppBody({
     removeNode(id)
   }
 
-  // Import a previously exported tree (the `myhomepage.tree.v1` shape) from a
-  // JSON file, or a browser's bookmark HTML export. Everything is validated in
-  // `parseImportedTree`; here we only deal with reading the file.
+  // Import a bookmark HTML file — a browser's export, or this page's own.
+  // Everything is validated in `parseImportedTree`; here we only deal with
+  // reading the file.
   const onImportFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     // Reset immediately so picking the same file twice in a row still fires
@@ -363,7 +363,7 @@ function AppBody({
             <input
               ref={fileInputRef}
               type="file"
-              accept="application/json,.json,text/html,.html,.htm"
+              accept="text/html,.html,.htm"
               onChange={onImportFile}
               className="hidden"
             />

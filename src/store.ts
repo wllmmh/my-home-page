@@ -32,7 +32,8 @@ export const newFolder = (name: string, icon = 'folder'): FolderNode => ({
 export const newLink = (name: string, url: string): LinkNode => ({ id: uid(), type: 'link', name, url })
 
 /**
- * Coerce parsed JSON from an imported file into well-formed tree nodes.
+ * Coerce the loose nodes read out of an imported file into well-formed tree
+ * nodes.
  *
  * The file is user-supplied and may be hand-edited, from an older version, or
  * simply not a bookmark file at all, so nothing about its shape is trusted:
@@ -91,15 +92,9 @@ function isSafeUrl(url: string) {
   }
 }
 
-/**
- * Nodes parsed out of an imported file, or [] if it isn't one. Accepts either
- * an exported-tree JSON file or a browser's bookmark HTML export; throws on
- * malformed JSON.
- */
+/** Nodes parsed out of a bookmark HTML file, or [] if it isn't one. */
 export function parseImportedTree(text: string): TreeNode[] {
-  const trimmed = text.trimStart()
-  if (trimmed.startsWith('<')) return sanitizeNodes(parseBookmarkHtml(trimmed))
-  return sanitizeNodes(JSON.parse(text))
+  return sanitizeNodes(parseBookmarkHtml(text))
 }
 
 /**

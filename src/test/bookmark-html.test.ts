@@ -63,9 +63,4 @@ describe('bookmark HTML import', () => {
     ]
     expect(strip(parseImportedTree(toBookmarkHtml(tree)))).toEqual(strip(tree))
   })
-
-  it('still reads JSON exports', () => {
-    const json = JSON.stringify([{ type: 'link', name: 'A', url: 'https://a.com' }])
-    expect(strip(parseImportedTree(json))).toEqual([{ name: 'A', url: 'https://a.com' }])
-  })
 })

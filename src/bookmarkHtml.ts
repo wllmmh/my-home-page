@@ -8,9 +8,8 @@ import type { TreeNode } from './types'
  */
 
 /**
- * Read a bookmark HTML file into the same loose `{ type, name, url, icon,
- * children }` shape as an exported JSON tree, so it can go through the exact
- * same validation (`sanitizeNodes`) rather than a second, parallel one.
+ * Read a bookmark HTML file into loose `{ type, name, url, icon, children }`
+ * nodes, left for `sanitizeNodes` to validate.
  *
  * Parsed with `DOMParser`, which builds an inert document — no scripts run,
  * no images or favicons load — so reading an untrusted file is safe.
