@@ -8,6 +8,7 @@ import FolderTree from './FolderTree'
 import { FolderModal, LinkModal, MoveModal, SettingsModal } from './Modal'
 import { useTree, useShortcuts, useSettings, newFolder, newLink, parseImportedTree, findPath } from './store'
 import { toBookmarkHtml } from './bookmarkHtml'
+import { isTyping } from '@/lib/utils'
 import { useResolvedBackgroundImage } from './backgroundImageDb'
 import { I18nProvider, useI18n } from './i18n'
 import { headlineCls } from './textTheme'
@@ -180,6 +181,28 @@ function AppBody({
     // started yet. Deferring frees it without racing the save.
     setTimeout(() => URL.revokeObjectURL(url), 10_000)
   }
+
+  // "i" opens the import file picker and "e" exports, mirroring the header
+  // menu items. Re-attached when the tree changes so "e" exports the current
+  // tree, not the one `onExport` closed over on an earlier render.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // Plain key only: Ctrl/Cmd-E and friends belong to the browser. Also
+      // skipped while typing (an "e" in a bookmark name is just an "e") and
+      // while a dialog or menu is up — it owns the keyboard until it closes
+      // (a menu uses letters to jump between its items).
+      if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return
+      if (isTyping() || document.querySelector('[role="dialog"], [role="alertdialog"], [role="menu"]')) return
+      const key = e.key.toLowerCase()
+      if (key === 'i') fileInputRef.current?.click()
+      else if (key === 'e') onExport()
+      else return
+      e.preventDefault()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- onExport only reads `tree`
+  }, [tree])
 
   return (
     <div className="relative min-h-dvh [--page-gutter:24px] max-[520px]:[--page-gutter:16px]">

@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { useI18n } from './i18n'
+import { isTyping } from '@/lib/utils'
 
 export default function SearchBar({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const { t } = useI18n()
@@ -11,13 +12,7 @@ export default function SearchBar({ value, onChange }: { value: string; onChange
     const onKey = (e: KeyboardEvent) => {
       // Don't hijack "/" while the user is typing somewhere else — in a modal's
       // name field, say, or any contenteditable — where it's a literal slash.
-      const el = document.activeElement as HTMLElement | null
-      const typing =
-        el instanceof HTMLInputElement ||
-        el instanceof HTMLTextAreaElement ||
-        el instanceof HTMLSelectElement ||
-        el?.isContentEditable === true
-      if (e.key === '/' && !typing) {
+      if (e.key === '/' && !isTyping()) {
         e.preventDefault()
         ref.current?.focus()
       }

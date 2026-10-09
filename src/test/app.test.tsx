@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../App'
@@ -41,5 +41,38 @@ describe('adding a shortcut', () => {
     render(<App />)
     await user.click(screen.getByRole('button', { name: 'Add shortcut' }))
     expect(await screen.findByRole('dialog', { name: 'New bookmark' })).toBeInTheDocument()
+  })
+})
+
+describe('import/export shortcuts', () => {
+  it('"i" opens the import file picker and "e" exports', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<App />)
+    const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')!
+    const pick = vi.spyOn(fileInput, 'click').mockImplementation(() => {})
+    const download = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    URL.createObjectURL = vi.fn(() => 'blob:x')
+
+    await user.keyboard('i')
+    expect(pick).toHaveBeenCalledOnce()
+    await user.keyboard('e')
+    expect(download).toHaveBeenCalledOnce()
+    download.mockRestore()
+  })
+
+  it('leaves the keys alone while typing in a text field', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<App />)
+    const fileInput = container.querySelector<HTMLInputElement>('input[type="file"]')!
+    const pick = vi.spyOn(fileInput, 'click').mockImplementation(() => {})
+    const download = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+    const search = screen.getByRole('searchbox')
+    await user.click(search)
+    await user.keyboard('ie')
+    expect(search).toHaveValue('ie')
+    expect(pick).not.toHaveBeenCalled()
+    expect(download).not.toHaveBeenCalled()
+    download.mockRestore()
   })
 })
