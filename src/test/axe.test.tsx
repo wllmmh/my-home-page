@@ -42,7 +42,6 @@ const screens = {
       editing
       onEdit={noop}
       onRemove={noop}
-      onAdd={noop}
       onMove={noop}
       onMoveRequest={noop}
       onSelect={noop}

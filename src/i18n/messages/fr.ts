@@ -83,6 +83,8 @@ const fr: Messages = {
   renameNamed: (name) => `Renommer ${name}`,
   addFolderIn: (name) => `Ajouter un dossier dans ${name}`,
   addLinkIn: (name) => `Ajouter un favori dans ${name}`,
+  openAllInNewTabs: 'Tout ouvrir dans de nouveaux onglets',
+  renameOrChangeIcon: 'Renommer / changer l’icône',
   moveNamed: (name) => `Déplacer ${name}`,
   iconNamed: (name) => `Icône : ${name}`,
 

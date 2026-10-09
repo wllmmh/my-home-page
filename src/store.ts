@@ -95,6 +95,24 @@ export function parseImportedTree(text: string): TreeNode[] {
   return sanitizeNodes(JSON.parse(text))
 }
 
+/**
+ * Add `incoming` nodes to `existing` (both the children of one directory),
+ * skipping duplicates: a link whose URL is already in the directory, and a
+ * folder whose name matches an existing folder is merged into it rather than
+ * duplicated, applying the same rule to its children. Duplicates within
+ * `incoming` itself are dropped too.
+ */
+export function mergeNodes(existing: TreeNode[], incoming: TreeNode[]): TreeNode[] {
+  return incoming.reduce((acc, node) => {
+    if (node.type === 'link') {
+      return acc.some((n) => n.type === 'link' && n.url === node.url) ? acc : [...acc, node]
+    }
+    const match = acc.find((n): n is FolderNode => n.type === 'folder' && n.name === node.name)
+    if (!match) return [...acc, { ...node, children: mergeNodes([], node.children) }]
+    return acc.map((n) => (n === match ? { ...match, children: mergeNodes(match.children, node.children) } : n))
+  }, existing)
+}
+
 // What a fresh load gets, same idea as `DEFAULT_SHORTCUTS` for the shortcut grid.
 const DEFAULT_BOOKMARKS: TreeNode[] = [
   { id: 'default-bookmark-0', type: 'link', name: 'williammh.github.io', url: 'https://williammh.github.io' },
@@ -111,15 +129,28 @@ function load(): TreeNode[] {
   }
 }
 
+/** Where within a folder to place a node: next to the sibling `id`. Without one, a node goes last. */
+export interface Anchor {
+  id: string
+  after: boolean
+}
+
+function place(siblings: TreeNode[], node: TreeNode, anchor?: Anchor): TreeNode[] {
+  const i = anchor ? siblings.findIndex((n) => n.id === anchor.id) : -1
+  if (!anchor || i < 0) return [...siblings, node]
+  const at = anchor.after ? i + 1 : i
+  return [...siblings.slice(0, at), node, ...siblings.slice(at)]
+}
+
 /** Recursively insert `node` into the folder with id `parentId` (null = root). */
-function insert(nodes: TreeNode[], parentId: string | null, node: TreeNode): TreeNode[] {
-  if (parentId === null) return [...nodes, node]
+function insert(nodes: TreeNode[], parentId: string | null, node: TreeNode, anchor?: Anchor): TreeNode[] {
+  if (parentId === null) return place(nodes, node, anchor)
   return nodes.map((n) => {
     if (n.id === parentId && n.type === 'folder') {
-      return { ...n, children: [...n.children, node] }
+      return { ...n, children: place(n.children, node, anchor) }
     }
     if (n.type === 'folder') {
-      return { ...n, children: insert(n.children, parentId, node) }
+      return { ...n, children: insert(n.children, parentId, node, anchor) }
     }
     return n
   })
@@ -146,9 +177,12 @@ function contains(node: TreeNode, targetId: string): boolean {
   return node.children.some((c) => contains(c, targetId))
 }
 
-/** Move node `id` to be a child of the folder `targetId` (null = root). No-op if the move is invalid. */
-function move(nodes: TreeNode[], id: string, targetId: string | null): TreeNode[] {
-  if (id === targetId) return nodes
+/**
+ * Move node `id` to be a child of the folder `targetId` (null = root), last
+ * unless `anchor` names a sibling to sit next to. No-op if the move is invalid.
+ */
+function move(nodes: TreeNode[], id: string, targetId: string | null, anchor?: Anchor): TreeNode[] {
+  if (id === targetId || id === anchor?.id) return nodes
   const node = findPath(nodes, id)?.at(-1)
   if (!node) return nodes
   if (targetId !== null) {
@@ -156,7 +190,7 @@ function move(nodes: TreeNode[], id: string, targetId: string | null): TreeNode[
     if (!target || target.type !== 'folder') return nodes
     if (contains(node, targetId)) return nodes
   }
-  return insert(remove(nodes, id), targetId, node)
+  return insert(remove(nodes, id), targetId, node, anchor)
 }
 
 /** Path of folder nodes from root down to `id`, for breadcrumbs. */
@@ -187,10 +221,14 @@ export function useTree() {
     addNode: useCallback((parentId: string | null, node: TreeNode) => setTree((t) => insert(t, parentId, node)), []),
     removeNode: useCallback((id: string) => setTree((t) => remove(t, id)), []),
     updateNode: useCallback((id: string, patch: Partial<TreeNode>) => setTree((t) => update(t, id, patch)), []),
-    moveNode: useCallback((id: string, targetId: string | null) => setTree((t) => move(t, id, targetId)), []),
-    // Appends at the root rather than replacing, so an import can never
-    // silently destroy bookmarks the user already had.
-    importNodes: useCallback((nodes: TreeNode[]) => setTree((t) => [...t, ...nodes]), []),
+    moveNode: useCallback(
+      (id: string, targetId: string | null, anchor?: Anchor) => setTree((t) => move(t, id, targetId, anchor)),
+      [],
+    ),
+    // Merges into the root rather than replacing, so an import can never
+    // silently destroy bookmarks the user already had, and skips anything
+    // already present in the same directory.
+    importNodes: useCallback((nodes: TreeNode[]) => setTree((t) => mergeNodes(t, nodes)), []),
   }
 }
 

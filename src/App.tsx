@@ -6,7 +6,7 @@ import SearchBar from './SearchBar'
 import { LinkCard, cardBase, cardIconSlotCls, cardLabelCls } from './Cards'
 import FolderTree from './FolderTree'
 import { FolderModal, LinkModal, MoveModal, SettingsModal } from './Modal'
-import { useTree, useShortcuts, useSettings, newFolder, newLink, parseImportedTree } from './store'
+import { useTree, useShortcuts, useSettings, newFolder, newLink, parseImportedTree, findPath } from './store'
 import { useResolvedBackgroundImage } from './backgroundImageDb'
 import { I18nProvider, useI18n } from './i18n'
 import { headlineCls } from './textTheme'
@@ -51,7 +51,11 @@ function AppBody({
   const { t } = useI18n()
   const { tree, addNode, removeNode, updateNode, moveNode, importNodes } = useTree()
   const { shortcuts, addShortcut, removeShortcut, updateShortcut } = useShortcuts()
-  const [selectedId, setSelectedId] = useState<string | null>(null)  // folder highlighted in the tree
+  const [selectedId, setSelectedId] = useState<string | null>(null)  // most recently clicked folder in the tree
+  // The folder new bookmarks/folders are added to. Derived rather than stored
+  // so a selection that has since been deleted (directly, or along with an
+  // ancestor) falls back to the top level instead of pointing at nothing.
+  const activeFolderId = selectedId && findPath(tree, selectedId)?.at(-1)?.type === 'folder' ? selectedId : null
   const [modal, setModal] = useState<Modal | null>(null)
   const [query, setQuery] = useState('')
   // Toggled by "Edit Shortcuts": while on, every shortcut card and every
@@ -211,18 +215,6 @@ function AppBody({
         // can't cut off genuine page overflow (the case where content is
         // taller than `min-h-dvh` and the *page* is meant to scroll) — that
         // overflow happens on the parent, one level up, which stays unclipped.
-        //
-        // `inset-0` here does sit flush against the *edge of the reserved
-        // scrollbar gutter*, not the outer edge of the gutter itself (see
-        // `html`'s `scrollbar-gutter: stable` in index.css) — but that gutter
-        // is exactly where the scrollbar itself paints, right up against the
-        // content with no gap, so there's nothing left uncovered. (Tried
-        // `w-[100vw]` to reach under the gutter regardless — reverted: `vw`
-        // is spec'd against the viewport *including* the scrollbar, so on a
-        // page that actually has one this widens the layer past `overflow`'s
-        // clipping ability higher up the tree and reintroduces the
-        // site-wide horizontal scrollbar the parallax layer's own comment
-        // above warns about.)
         <div className="absolute inset-0 -z-10 overflow-hidden">
           <div
             ref={backgroundRef}
@@ -342,35 +334,29 @@ function AppBody({
         </header>
 
         <section className="flex min-h-[320px] flex-1 flex-col" aria-label={t.landmarkBookmarks}>
-          {/* The panel is the scroll container, and both the "Bookmarks" root
-              row and the import/export bar are sticky *inside* it — so they
-              stay put against the glass while the tree scrolls under them,
-              rather than sitting outside as separate page furniture. */}
+          {/* The panel is only the glass frame: FolderTree renders the
+              "Bookmarks" header row above its own scroll area, so the header
+              stays put and the scrollbar only spans the tree. */}
           <div
             id="bookmarks-panel"
             // `tabIndex={-1}`: the skip link has to be able to move focus here,
             // and a container is not focusable on its own.
             tabIndex={-1}
-            className="glass glass-panel scroll-themed relative flex min-h-0 flex-1 flex-col overflow-y-auto rounded-lg px-3 outline-none"
+            className="glass glass-panel relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg outline-none"
           >
-            {/* Vertical padding lives on the tree, not here: `p-3` on the
-                scroll container would offset sticky folder headers 12px down
-                from the visible top edge, leaving a gap for rows to scroll
-                through above them. */}
             <FolderTree
               tree={tree}
               query={query}
-              selectedId={selectedId}
+              selectedId={activeFolderId}
               newTab={settings.openInNewTab}
               editing={editingShortcuts}
               onSelect={setSelectedId}
               onEdit={(node) => (node.type === 'folder' ? setModal({ kind: 'folder', node }) : setModal({ kind: 'link', node }))}
               onRemove={del}
-              onAdd={(folder, kind) => setModal({ kind, target: folder.id })}
               onMove={moveNode}
               onMoveRequest={(node) => setModal({ kind: 'move', node })}
               rootLabel={t.bookmarks}
-              onAddRoot={(kind) => setModal({ kind, target: null })}
+              onAddRoot={(kind) => setModal({ kind, target: activeFolderId })}
               onToggleEditing={() => setEditingShortcuts((v) => !v)}
             />
             {/* Driven by the header menu's Import item; the input itself is

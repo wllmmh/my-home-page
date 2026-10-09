@@ -134,12 +134,17 @@ describe('no layout shift inside the bookmarks panel from folder expansion', () 
     expect(app).toContain('min-h-dvh')
   })
 
-  it('makes the bookmarks panel an overflow-y-auto scroll container', () => {
-    expect(app).toContain('overflow-y-auto')
+  // The tree below the "Bookmarks" header is the scroll container, so the
+  // header stays put and the scrollbar doesn't run alongside it.
+  const tree = src('FolderTree.tsx')
+
+  it('makes the tree (not the whole panel) a scroll-themed overflow-y-auto container', () => {
+    expect(tree).toMatch(/className="scroll-themed[^"]*overflow-y-auto/)
+    expect(app).not.toMatch(/className="[^"]*overflow-y-auto/)
   })
 
-  it('gives the bookmarks panel the scroll-themed class', () => {
-    expect(app).toMatch(/scroll-themed[\s\S]*?overflow-y-auto/)
+  it('clips horizontal overflow so no x scrollbar flashes during animations', () => {
+    expect(tree).toMatch(/className="scroll-themed[^"]*overflow-x-hidden/)
   })
 
   it('scales only the Y axis on the parallax layer, not both axes', () => {

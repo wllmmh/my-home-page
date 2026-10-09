@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type DragEvent, type RefObject } from 'react'
+import { useEffect, useRef, useState, type DragEvent, type ReactElement, type RefObject } from 'react'
 import { getIcon } from './icons'
-import { FolderPlusIcon, PencilIcon, PencilSquareIcon, CheckIcon, TrashIcon, ArrowsUpDownIcon } from '@heroicons/react/24/outline'
+import { FolderPlusIcon, PencilIcon, PencilSquareIcon, CheckIcon, TrashIcon, ArrowsUpDownIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline'
 import { BookmarkSimpleIcon } from '@phosphor-icons/react'
 import { Highlighted } from './highlight'
 import { useI18n } from './i18n'
@@ -8,9 +8,39 @@ import {
   TreeProvider, TreeView, TreeNode, TreeNodeTrigger, TreeNodeContent,
   TreeExpander, TreeIcon, TreeLabel, TreeLines,
 } from '@/components/kibo-ui/tree'
+import {
+  ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator,
+} from '@/components/ui/context-menu'
 import type { TreeNode as BookmarkNode, FolderNode } from './types'
+import { findPath, type Anchor } from './store'
 
 const DND_MIME = 'application/x-myhomepage-node-id'
+
+/**
+ * Where a drag is hovering on a row: `before`/`after` reorder next to it,
+ * `into` (folders only) files the dragged node inside it.
+ */
+type DropZone = 'before' | 'into' | 'after'
+interface DragOver {
+  id: string
+  zone: DropZone
+}
+
+function zoneAt(e: DragEvent, isFolder: boolean): DropZone {
+  const { top, height } = e.currentTarget.getBoundingClientRect()
+  const y = (e.clientY - top) / height
+  // A folder keeps its middle for "drop inside"; a link has nothing to drop
+  // into, so it splits evenly between above and below.
+  if (!isFolder) return y < 0.5 ? 'before' : 'after'
+  return y < 0.25 ? 'before' : y > 0.75 ? 'after' : 'into'
+}
+
+
+const ZONE_CLS: Record<DropZone, string> = {
+  into: 'bg-primary/10 ring-1 ring-inset ring-primary',
+  before: 'shadow-[inset_0_2px_0_0_var(--color-primary)]',
+  after: 'shadow-[inset_0_-2px_0_0_var(--color-primary)]',
+}
 
 interface DragHandlerProps {
   draggable: boolean
@@ -118,7 +148,7 @@ function matchIds(nodes: BookmarkNode[], query: string, ancestors: string[] = []
  */
 function useInnermostSticky(scrollRef: RefObject<HTMLDivElement | null>, deps: unknown[]) {
   useEffect(() => {
-    const panel = scrollRef.current?.closest('.scroll-themed')
+    const panel = scrollRef.current
     if (!panel) return
 
     const sync = () => {
@@ -160,13 +190,58 @@ function useInnermostSticky(scrollRef: RefObject<HTMLDivElement | null>, deps: u
   }, deps)
 }
 
+/**
+ * Right-click (or the keyboard's context-menu key / long-press) menu for a
+ * folder row. `trigger` is the row itself, rendered as the menu's trigger
+ * rather than wrapped in another element, so the row stays a direct child of
+ * its tree node — wrapping it would end its sticky range at the wrapper.
+ */
+function FolderMenu({
+  folder,
+  trigger,
+  onEdit,
+  onRemove,
+}: {
+  folder: FolderNode
+  trigger: ReactElement
+  onEdit: (node: BookmarkNode) => void
+  onRemove: (id: string) => void
+}) {
+  const { t } = useI18n()
+  // Shallow on purpose: only this folder's own bookmarks, not its subfolders'.
+  const urls = folder.children.flatMap((c) => (c.type === 'link' ? [c.url] : []))
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger render={trigger} />
+      <ContextMenuContent>
+        <ContextMenuItem
+          disabled={urls.length === 0}
+          onClick={() => urls.forEach((url) => window.open(url, '_blank', 'noopener,noreferrer'))}
+        >
+          <ArrowTopRightOnSquareIcon />
+          {t.openAllInNewTabs}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => onEdit(folder)}>
+          <PencilIcon />
+          {t.renameOrChangeIcon}
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem variant="destructive" onClick={() => onRemove(folder.id)}>
+          <TrashIcon />
+          {t.delete}
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
+  )
+}
+
 function Row({
   node,
   query,
   editing,
   onEdit,
   onRemove,
-  onAdd,
   onMoveRequest,
 }: {
   node: BookmarkNode
@@ -174,7 +249,6 @@ function Row({
   editing: boolean
   onEdit: (node: BookmarkNode) => void
   onRemove: (id: string) => void
-  onAdd: (folder: FolderNode, kind: 'folder' | 'link') => void
   onMoveRequest: (node: BookmarkNode) => void
 }) {
   const { t } = useI18n()
@@ -188,27 +262,6 @@ function Row({
       <TreeExpander hasChildren={hasChildren} />
       <TreeIcon icon={<Icon className="size-4" />} hasChildren={hasChildren} />
       <TreeLabel><Highlighted text={node.name} query={query} /></TreeLabel>
-      {folderNode && (
-        // No `gap` here: each button carries its own 4px of padding (see
-        // `rowBtnCls`), which spaces the 32px tap targets apart the same way
-        // the root row's buttons space themselves with their own padding.
-        <span className="ms-2 flex shrink-0 items-center">
-          <button
-            type="button"
-            title={t.addFolder}
-            aria-label={t.addFolderIn(node.name)}
-            className={rowBtnCls}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAdd(folderNode, 'folder') }}
-          ><span className={rowInnerCls}><FolderPlusIcon /></span></button>
-          <button
-            type="button"
-            title={t.addLink}
-            aria-label={t.addLinkIn(node.name)}
-            className={rowBtnCls}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAdd(folderNode, 'link') }}
-          ><span className={rowInnerCls}><BookmarkSimpleIcon /></span></button>
-        </span>
-      )}
       {editing && (
         <span className="ms-2 flex shrink-0 items-center">
           {/* The keyboard path to what dragging does with a mouse. It lives in
@@ -252,16 +305,15 @@ interface NodesProps {
   editing: boolean
   onEdit: (node: BookmarkNode) => void
   onRemove: (id: string) => void
-  onAdd: (folder: FolderNode, kind: 'folder' | 'link') => void
-  onMove: (id: string, targetId: string | null) => void
+  onMove: (id: string, targetId: string | null, anchor?: Anchor) => void
   onMoveRequest: (node: BookmarkNode) => void
   draggingId: string | null
-  dragOverId: string | null
-  setDragOverId: (id: string | null | ((cur: string | null) => string | null)) => void
+  dragOver: DragOver | null
+  setDragOver: (v: DragOver | null | ((cur: DragOver | null) => DragOver | null)) => void
   onDragging: (id: string | null) => void
 }
 
-function Nodes({ nodes, parentId = null, level, query, visible, newTab, selectedId, editing, onEdit, onRemove, onAdd, onMove, onMoveRequest, draggingId, dragOverId, setDragOverId, onDragging }: NodesProps) {
+function Nodes({ nodes, parentId = null, level, query, visible, newTab, selectedId, editing, onEdit, onRemove, onMove, onMoveRequest, draggingId, dragOver, setDragOver, onDragging }: NodesProps) {
   const shown = query ? nodes.filter((n) => visible?.has(n.id)) : nodes
 
   return shown.map((node, i) => {
@@ -269,13 +321,10 @@ function Nodes({ nodes, parentId = null, level, query, visible, newTab, selected
     const isFolder = folderNode !== null
     const hasChildren = isFolder && folderNode.children.length > 0
     const isLast = i === shown.length - 1
-    // Dropping on a link row means "into the folder that link lives in", so a
-    // bookmark can be filed without hitting the folder row itself.
-    const dropTargetId = isFolder ? node.id : parentId
-    // No highlight for a drop that wouldn't move anything: onto itself, or onto
-    // a sibling link already in the same folder.
-    const isNoop = draggingId === node.id || (!isFolder && draggingId !== null && nodes.some((n) => n.id === draggingId))
-    const isDragOver = dragOverId === node.id && !isNoop
+    // No highlight when dragging a node over itself.
+    const isSelf = draggingId === node.id
+    const zone = dragOver?.id === node.id && !isSelf ? dragOver.zone : null
+    const zoneCls = zone ? ZONE_CLS[zone] : ''
 
     const dragProps = {
       draggable: true,
@@ -290,24 +339,33 @@ function Nodes({ nodes, parentId = null, level, query, visible, newTab, selected
         e.preventDefault()
         e.stopPropagation()
         e.dataTransfer.dropEffect = 'move'
-        setDragOverId(node.id)
+        const next = zoneAt(e, isFolder)
+        setDragOver((cur) => (cur?.id === node.id && cur.zone === next ? cur : { id: node.id, zone: next }))
       },
       onDragLeave: (e: DragEvent) => {
         e.stopPropagation()
-        setDragOverId((cur) => (cur === node.id ? null : cur))
+        setDragOver((cur) => (cur?.id === node.id ? null : cur))
       },
       onDrop: (e: DragEvent) => {
         e.preventDefault()
         e.stopPropagation()
-        setDragOverId(null)
+        setDragOver(null)
         const draggedId = e.dataTransfer.getData(DND_MIME)
-        if (draggedId && !isNoop) onMove(draggedId, dropTargetId)
+        if (!draggedId || draggedId === node.id) return
+        const dropZone = zoneAt(e, isFolder)
+        if (dropZone === 'into') onMove(draggedId, node.id)
+        else onMove(draggedId, parentId, { id: node.id, after: dropZone === 'after' })
       },
     }
 
     return (
       <TreeNode key={node.id} nodeId={node.id} level={level} isLast={isLast}>
         {folderNode ? (
+          <FolderMenu
+            folder={folderNode}
+            onEdit={onEdit}
+            onRemove={onRemove}
+            trigger={
           <TreeNodeTrigger
             // Sticky so the folder you're scrolling through keeps its header
             // in view. A parent's sticky range spans its whole subtree, so at
@@ -325,9 +383,7 @@ function Nodes({ nodes, parentId = null, level, query, visible, newTab, selected
             // any specificity in `components`, so it's overridden by CSS in
             // index.css keyed off `data-selected` instead.
             data-selected={selectedId === node.id ? '' : undefined}
-            className={`sticky folder-sticky -mx-3 rounded-none ${
-              isDragOver ? 'bg-primary/10 ring-1 ring-inset ring-primary' : ''
-            }`}
+            className={`sticky folder-sticky -mx-3 rounded-none ${zoneCls}`}
             // TreeNodeTrigger spreads props after its own style, so passing
             // `style` here replaces its padding — restate the indent.
             // +12 compensates for the -mx-3 (12px) escape of the panel's own
@@ -346,8 +402,10 @@ function Nodes({ nodes, parentId = null, level, query, visible, newTab, selected
             }}
             {...(dragProps as DragHandlerProps)}
           >
-            <Row node={node} query={query} editing={editing} onEdit={onEdit} onRemove={onRemove} onAdd={onAdd} onMoveRequest={onMoveRequest} />
+            <Row node={node} query={query} editing={editing} onEdit={onEdit} onRemove={onRemove} onMoveRequest={onMoveRequest} />
           </TreeNodeTrigger>
+            }
+          />
         ) : node.type === 'link' && (
           <a
             href={node.url}
@@ -358,14 +416,14 @@ function Nodes({ nodes, parentId = null, level, query, visible, newTab, selected
             // its target in the status bar.
             role="treeitem"
             className={`group relative -mx-3 flex cursor-pointer items-center rounded-none px-3 py-2 no-underline transition-all duration-200 hover:bg-accent/50 ${
-              isDragOver ? 'bg-primary/10 ring-1 ring-inset ring-primary' : ''
+              zoneCls
             }`}
             style={{ paddingInlineStart: level * 20 + 8 + 12 }}
             {...(newTab && { target: '_blank', rel: 'noopener noreferrer' })}
             {...dragProps}
           >
             <TreeLines />
-            <Row node={node} query={query} editing={editing} onEdit={onEdit} onRemove={onRemove} onAdd={onAdd} onMoveRequest={onMoveRequest} />
+            <Row node={node} query={query} editing={editing} onEdit={onEdit} onRemove={onRemove} onMoveRequest={onMoveRequest} />
           </a>
         )}
         {hasChildren && folderNode && (
@@ -382,11 +440,10 @@ function Nodes({ nodes, parentId = null, level, query, visible, newTab, selected
               editing={editing}
               onEdit={onEdit}
               onRemove={onRemove}
-              onAdd={onAdd}
               onMove={onMove}
               onMoveRequest={onMoveRequest}
-              dragOverId={dragOverId}
-              setDragOverId={setDragOverId}
+              dragOver={dragOver}
+              setDragOver={setDragOver}
               onDragging={onDragging}
             />
           </TreeNodeContent>
@@ -414,7 +471,6 @@ export default function FolderTree({
   editing = false,
   onEdit,
   onRemove,
-  onAdd,
   onMove,
   onMoveRequest,
   onSelect,
@@ -430,14 +486,13 @@ export default function FolderTree({
   editing?: boolean
   onEdit: (node: BookmarkNode) => void
   onRemove: (id: string) => void
-  onAdd: (folder: FolderNode, kind: 'folder' | 'link') => void
-  onMove: (id: string, targetId: string | null) => void
+  onMove: (id: string, targetId: string | null, anchor?: Anchor) => void
   /** Open the "Move to…" dialog — the keyboard alternative to dragging. */
   onMoveRequest: (node: BookmarkNode) => void
   onSelect: (id: string | null) => void
   /** Name of the synthetic root row shown above the tree (e.g. "Bookmarks"). */
   rootLabel?: string
-  /** Add a folder/link at the top level, from the root row's own buttons. */
+  /** Add a folder/link to the active folder (see `selectedId`), from the root row's buttons. */
   onAddRoot?: (kind: 'folder' | 'link') => void
   /** Flip `editing` on and off. The toggle sits on the root row because the
       mode it controls covers this tree as well as the shortcut grid above. */
@@ -447,13 +502,14 @@ export default function FolderTree({
   const trimmedQuery = query.trim()
   const visible = trimmedQuery ? matchIds(tree, trimmedQuery) : null
   const hasResults = !trimmedQuery || (visible?.size ?? 0) > 0
-  const [dragOverId, setDragOverId] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState<DragOver | null>(null)
   const [rootDragOver, setRootDragOver] = useState(false)
   const [dragging, setDragging] = useState<string | null>(null)  // id of the node being dragged
-  const rootRef = useRef<HTMLDivElement>(null)
-  useInnermostSticky(rootRef, [tree, trimmedQuery])
+  const scrollRef = useRef<HTMLDivElement>(null)
+  useInnermostSticky(scrollRef, [tree, trimmedQuery])
   // Same resolver the real folder rows use, so the root reads as one of them.
   const RootIcon = getIcon('folder')
+  const activeFolder = selectedId ? findPath(tree, selectedId)?.at(-1) : undefined
 
   const rootDropProps = {
     onDragOver: (e: DragEvent) => {
@@ -481,55 +537,46 @@ export default function FolderTree({
       key={trimmedQuery}
       defaultExpandedIds={trimmedQuery && visible ? [...visible] : []}
       selectedIds={selectedId ? [selectedId] : []}
-      onSelectionChange={(ids) => onSelect(ids[0] ?? null)}
+      // Clicking the active folder again toggles its expansion but keeps it
+      // active; the root row is how you go back to the top level.
+      onSelectionChange={(ids) => { if (ids[0]) onSelect(ids[0]) }}
       showLines
       indent={INDENT}
       animateExpand={!trimmedQuery}
     >
-      {/* `flex-1 min-h-0`, not `min-h-full`: a percentage height only
-          resolves against an ancestor with a *definite* height, and nothing
-          up the chain (the scroll panel's own `motion.div` wrapper in
-          kibo-ui's TreeProvider included — see the comment there) reliably
-          has one. `flex-1` sidesteps that: it grows to fill whatever the
-          nearest flex ancestor actually has, which is what lets the empty
-          state below claim real height instead of collapsing to 0 and
-          rendering as a box hugging the top of the panel. */}
-      <div ref={rootRef} {...rootDropProps} className="flex min-h-0 flex-1 flex-col rounded-lg">
+      <div {...rootDropProps} className="flex min-h-0 flex-1 flex-col">
         {rootLabel && (
-          // The synthetic root: named like a folder and pinned at the top of
-          // the panel, so the tree reads as living *inside* "Bookmarks"
-          // rather than under a heading floating outside the glass. It's also
-          // the drop target for "move to top level" — dragging onto the row
-          // that represents the root is the obvious gesture for it, so the
-          // separate drop strip below only appears as a fallback hint.
+          // The synthetic root: named like a folder and sitting above the
+          // scroll area, so the tree reads as living *inside* "Bookmarks".
+          // It's also the drop target for "move to top level", so the drop
+          // strip below only appears as a fallback hint.
+          //
+          // `pe-1`, not `pe-3`: the trailing buttons carry 16px of their own
+          // padding, so 4px more reaches the same 20px inset as other rows.
           <div
             {...rootDropProps}
             title={t.dropToTopLevel}
-            // z-index sits above the folder rows, which use `10 + level` —
-            // a deeply nested row must not paint over the pinned root. Full
-            // width, matching the other rows (see their `mx-0 rounded-none`).
-            //
-            // `pe-1`, not the `pe-3` the other rows use: the trailing button
-            // carries 16px of its own padding for its touch target, so the
-            // row only adds the 4px needed to reach the same 20px optical
-            // inset — `pe-3` on top of that would push the icons visibly in.
-            className={`group folder-sticky sticky top-0 z-50 -mx-3 flex items-center py-2.5 pe-1 transition-colors ${
+            className={`group flex shrink-0 items-center py-2.5 pe-1 transition-colors ${
               rootDragOver ? 'bg-primary/10 ring-1 ring-inset ring-primary' : ''
             }`}
-            // One INDENT less than a real level-0 folder row's own start
-            // (INDENT * 0 + 8 + 12, see the folder row below) — the root sits
-            // one level "above" level 0, so its children (which render at
-            // level 0) read as properly nested under it instead of lining up
-            // flush with it. The spacer that follows matches TreeExpander's
-            // box (w-4 + me-1) so the root's icon still lines up with a
-            // folder row's icon, just shifted in by the same amount. No
-            // `gap` here, same as the folder row: it relies purely on each
-            // child's own margin and padding.
-            style={{ backgroundColor: 'var(--sticky-row-bg)', paddingInlineStart: 8 + 12 - INDENT }}
+            // One INDENT less than a level-0 folder row (INDENT * 0 + 8 + 12),
+            // so level-0 children read as nested under it. The spacer below
+            // matches TreeExpander's box so the icons still line up.
+            style={{ paddingInlineStart: 8 + 12 - INDENT }}
           >
             <span className="me-1 h-4 w-4 shrink-0" />
-            <RootIcon className="size-4 shrink-0 text-muted-foreground" />
-            <span className="ms-1.5 flex-1 truncate text-sm font-medium">{rootLabel}</span>
+            {/* Making the top level the active folder again. A real button so
+                it is reachable by keyboard; it takes the row's free space so
+                the whole label area is clickable. */}
+            <button
+              type="button"
+              aria-pressed={selectedId === null}
+              className="flex min-w-0 flex-1 cursor-pointer items-center text-start"
+              onClick={() => onSelect(null)}
+            >
+              <RootIcon className="size-4 shrink-0 text-muted-foreground" />
+              <span className="ms-1.5 flex-1 truncate text-sm font-medium">{rootLabel}</span>
+            </button>
             {/* The root row is now the primary control cluster for bookmarks.
                 No `gap` or start margin here: each button carries 16px of its
                 own horizontal padding (see `rootBtnCls`), which both separates
@@ -540,14 +587,14 @@ export default function FolderTree({
                   <button
                     type="button"
                     title={t.newFolder}
-                    aria-label={t.newFolder}
+                    aria-label={activeFolder ? t.addFolderIn(activeFolder.name) : t.newFolder}
                     className={rootBtnCls}
                     onClick={() => onAddRoot('folder')}
                   ><span className={rootInnerCls}><FolderPlusIcon /></span></button>
                   <button
                     type="button"
                     title={t.newBookmark}
-                    aria-label={t.newBookmark}
+                    aria-label={activeFolder ? t.addLinkIn(activeFolder.name) : t.newBookmark}
                     className={rootBtnCls}
                     onClick={() => onAddRoot('link')}
                   ><span className={rootInnerCls}><BookmarkSimpleIcon /></span></button>
@@ -567,55 +614,59 @@ export default function FolderTree({
           </div>
         )}
 
-        {tree.length === 0 ? (
-          // `flex-1` so the empty state fills whatever room the panel has —
-          // otherwise a tiny dashed box sits pinned to the top of a mostly
-          // empty glass panel, which reads as broken rather than as "there is
-          // genuinely nothing here yet." Centering both axes then reads as a
-          // deliberate placeholder rather than an unstyled fragment.
-          <div className="my-3 flex flex-1 items-center justify-center rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-            {t.treeEmpty}
-          </div>
-        ) : !hasResults ? (
-          <div className="my-3 flex flex-1 items-center justify-center rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-            {t.treeNoMatches(trimmedQuery)}
-          </div>
-        ) : (
-          <TreeView role="tree" aria-label={rootLabel} className="px-0 pt-2">
-            <Nodes
-              nodes={tree}
-              level={0}
-              query={trimmedQuery}
-              visible={visible}
-              newTab={newTab}
-              selectedId={selectedId}
-              editing={editing}
-              onEdit={onEdit}
-              onRemove={onRemove}
-              onAdd={onAdd}
-              onMove={onMove}
-              onMoveRequest={onMoveRequest}
-              draggingId={dragging}
-              dragOverId={dragOverId}
-              setDragOverId={setDragOverId}
-              onDragging={setDragging}
-            />
-          </TreeView>
-        )}
+        {/* The only scroll container. `px-3` lets rows escape it with
+            `-mx-3` to span the full width; `overflow-x-hidden` stops the
+            expand slide / tap scale from flashing a horizontal bar, and
+            `scroll-themed` reserves the vertical gutter so it can't flicker. */}
+        <div ref={scrollRef} className="scroll-themed flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-3">
+          {tree.length === 0 ? (
+            // `flex-1` so the empty state fills whatever room the panel has —
+            // otherwise a tiny dashed box sits pinned to the top of a mostly
+            // empty glass panel, which reads as broken rather than as "there is
+            // genuinely nothing here yet." Centering both axes then reads as a
+            // deliberate placeholder rather than an unstyled fragment.
+            <div className="my-3 flex flex-1 items-center justify-center rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+              {t.treeEmpty}
+            </div>
+          ) : !hasResults ? (
+            <div className="my-3 flex flex-1 items-center justify-center rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+              {t.treeNoMatches(trimmedQuery)}
+            </div>
+          ) : (
+            <TreeView role="tree" aria-label={rootLabel} className="px-0 pt-2">
+              <Nodes
+                nodes={tree}
+                level={0}
+                query={trimmedQuery}
+                visible={visible}
+                newTab={newTab}
+                selectedId={selectedId}
+                editing={editing}
+                onEdit={onEdit}
+                onRemove={onRemove}
+                onMove={onMove}
+                onMoveRequest={onMoveRequest}
+                draggingId={dragging}
+                dragOver={dragOver}
+                setDragOver={setDragOver}
+                onDragging={setDragging}
+              />
+            </TreeView>
+          )}
 
-        {dragging !== null && (
-          <div
-            {...rootDropProps}
-            aria-hidden="true"
-            title={t.dropToTopLevel}
-            className={`mx-1 mt-1 flex h-10 items-center justify-center rounded-md border border-dashed text-xs transition-colors ${
-              rootDragOver ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'
-            }`}
-          >
-            {t.dropToTopLevel}
-          </div>
-        )}
-
+          {dragging !== null && (
+            <div
+              {...rootDropProps}
+              aria-hidden="true"
+              title={t.dropToTopLevel}
+              className={`mx-1 mt-1 flex h-10 items-center justify-center rounded-md border border-dashed text-xs transition-colors ${
+                rootDragOver ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'
+              }`}
+            >
+              {t.dropToTopLevel}
+            </div>
+          )}
+        </div>
       </div>
     </TreeProvider>
   )

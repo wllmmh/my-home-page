@@ -312,19 +312,16 @@
 /* ---------------------------------------------------------------------------
    Scrollbars
    ---------------------------------------------------------------------------
-   The default scrollbar is an opaque OS-colored slab that ignores the theme
-   and sits on top of the glass — or, on the page itself, right on top of the
-   background photo, where its stock gray track reads as a seam across the
-   image. These rules restyle it from the same tokens everything else uses: a
-   transparent track (so the glass or background shows through) and a
-   translucent `--foreground` thumb, which reads correctly in both light and
-   dark without a second set of values. `html` gets the same treatment as
-   `.scroll-themed` (the bookmarks panel, the Modal) so the page's own
-   scrollbar — the one that appears when the bookmarks tree grows the
-   document past one screen — doesn't stand out as the one untreated bar.
+   Transparent track and a translucent `--foreground` thumb, so the bar sits
+   on the glass (or the page background) instead of an opaque OS slab.
+   Firefox only reads the `scrollbar-*` properties; WebKit/Blink needs the
+   pseudo-elements.
 
-   Firefox only supports the two `scrollbar-*` properties; WebKit/Blink needs
-   the pseudo-elements, so both are declared. */
+   `.scroll-themed` (the bookmark tree, Modal) also gets `scrollbar-gutter:
+   stable`: its content height changes every frame while a folder animates
+   open/closed, and a reserved gutter means the bar can't flicker in and out
+   or shift the rows sideways. `html` doesn't, since a permanently reserved
+   gutter left a bare strip down the right edge of the page. */
 @layer components {
   html,
   .scroll-themed {
@@ -333,21 +330,8 @@
   }
 
   .scroll-themed {
-    /* The bookmarks panel changes content height as folders expand/collapse
-       — its own flex box is what scrolls. Its scrollbar can flash in and out
-       several times over one 150ms animation as layout is recalculated
-       every frame. `stable` reserves the gutter unconditionally, so there's
-       no track appearing/disappearing to flicker and no content-width
-       change alongside it. */
     scrollbar-gutter: stable;
   }
-
-  /* No `scrollbar-gutter: stable` on `html` itself: reserving space
-     unconditionally left a visible gutter on the right of the page even
-     when no scrollbar was needed, and the background layer didn't extend
-     under it. The page only scrolls from static content (short viewport or
-     many shortcuts), not from a folder toggle, so the layout shift when its
-     scrollbar does appear is the accepted trade-off. */
 
   html::-webkit-scrollbar,
   .scroll-themed::-webkit-scrollbar {
@@ -356,30 +340,7 @@
   }
 
   html::-webkit-scrollbar-track,
-  .scroll-themed::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  html::-webkit-scrollbar-thumb,
-  .scroll-themed::-webkit-scrollbar-thumb {
-    background-color: var(--scroll-thumb);
-    border-radius: 999px;
-    /* Transparent border + `background-clip: content-box` insets the thumb
-       from the track edge, so it reads as a floating pill rather than a bar
-       welded to the panel wall. */
-    border: 2px solid transparent;
-    background-clip: content-box;
-  }
-
-  html:hover::-webkit-scrollbar-thumb,
-  html::-webkit-scrollbar-thumb:hover,
-  .scroll-themed:hover::-webkit-scrollbar-thumb,
-  .scroll-themed::-webkit-scrollbar-thumb:hover {
-    background-color: var(--scroll-thumb-hover);
-  }
-
-  /* The corner where the two bars meet, and the WebKit stepper buttons, both
-     default to a light gray patch that shows as a notch on a dark panel. */
+  .scroll-themed::-webkit-scrollbar-track,
   html::-webkit-scrollbar-corner,
   .scroll-themed::-webkit-scrollbar-corner {
     background: transparent;
@@ -389,34 +350,36 @@
   .scroll-themed::-webkit-scrollbar-button {
     display: none;
   }
+
+  /* Transparent border + content-box clip insets the thumb into a pill. */
+  html::-webkit-scrollbar-thumb,
+  .scroll-themed::-webkit-scrollbar-thumb {
+    background-color: var(--scroll-thumb);
+    background-clip: content-box;
+    border: 2px solid transparent;
+    border-radius: 999px;
+  }
+
+  html:hover::-webkit-scrollbar-thumb,
+  html::-webkit-scrollbar-thumb:hover,
+  .scroll-themed:hover::-webkit-scrollbar-thumb,
+  .scroll-themed::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scroll-thumb-hover);
+  }
 }
 
 /* ---------------------------------------------------------------------------
    Sticky folder headers
    ---------------------------------------------------------------------------
-   A folder row only needs the panel's own opaque backdrop while it's actually
-   pinned at the top and has content scrolling underneath it — hover and
-   selection get the same translucent tint as a bookmark row instead (see the
-   `.glass-panel` rules above), so a folder never reads darker than a
-   bookmark. The synthetic root row is permanently pinned, so it always needs
-   the opaque backdrop; nested folder rows are only pinned intermittently,
-   flagged by `data-stuck` from `useInnermostSticky` in FolderTree.tsx. */
+   A folder row is transparent like a bookmark row, and only gets a backdrop
+   while it's actually pinned at the top of the tree with rows scrolling
+   under it — flagged by `data-stuck` from `useInnermostSticky` in
+   FolderTree.tsx. `!important` to beat the `.glass-panel` hover/selection
+   tint above, which needs it itself to beat Tailwind utilities. */
 @layer components {
-  /* The `!important` tint above would otherwise win over this too (both are
-     `components`-layer, but that rule declares `!important`), so this one
-     needs it as well to stay opaque when a stuck row is also hovered or
-     selected. */
-  .glass-panel .folder-sticky[data-stuck],
-  .glass-panel .folder-sticky[data-stuck]:hover,
-  .glass-panel .folder-sticky[data-stuck][data-selected] {
-    /* The row's backdrop. With glass off this is the opaque card color; with
-       it on, the translucent tint below plus the backdrop-filter blurs the
-       rows passing underneath instead of hiding them outright. */
+  .glass-panel .folder-sticky[data-stuck] {
     background-color: var(--sticky-row-bg) !important;
     -webkit-backdrop-filter: var(--sticky-row-blur);
     backdrop-filter: var(--sticky-row-blur);
   }
-
-  /* The root row (see FolderTree.tsx) sets this backdrop inline instead,
-     since it's permanently pinned rather than intermittently stuck. */
 }

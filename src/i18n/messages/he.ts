@@ -83,6 +83,8 @@ const he: Messages = {
   renameNamed: (name) => `שינוי השם של ${name}`,
   addFolderIn: (name) => `הוספת תיקייה ב־${name}`,
   addLinkIn: (name) => `הוספת סימנייה ב־${name}`,
+  openAllInNewTabs: 'פתיחת הכול בלשוניות חדשות',
+  renameOrChangeIcon: 'שינוי שם / סמל',
   moveNamed: (name) => `העברת ${name}`,
   iconNamed: (name) => `סמל: ${name}`,
 

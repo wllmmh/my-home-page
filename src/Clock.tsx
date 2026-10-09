@@ -3,7 +3,7 @@ import SplitFlapText from './components/SplitFlapText'
 import { greetingFor } from './Greeting'
 import { dateFormatOptions } from './dateFormats'
 import { useI18n } from './i18n'
-import { headlineCls, headlineStrongCls } from './textTheme'
+import { headlineStrongCls } from './textTheme'
 import type { Settings } from './types'
 
 export default function Clock({ settings }: { settings: Settings }) {
@@ -107,7 +107,7 @@ export default function Clock({ settings }: { settings: Settings }) {
           live region here would announce the time endlessly, drowning out the
           rest of the page. The time is read on demand instead — which is how
           a clock on a wall works too. */}
-      <p className={`[text-shadow:0_1px_3px_rgb(0_0_0/0.95),0_2px_9px_rgb(0_0_0/0.75)] mt-2.5 flex flex-wrap items-baseline gap-x-[0.4em] gap-y-1.5 text-[clamp(13px,1.7vw,17px)] font-semibold leading-snug ${headlineCls(settings.textTheme)}`}>
+      <p className={`[text-shadow:0_1px_3px_rgb(0_0_0/0.95),0_2px_9px_rgb(0_0_0/0.75)] mt-2.5 flex flex-wrap items-baseline gap-x-[0.4em] gap-y-1.5 text-[clamp(13px,1.7vw,17px)] font-semibold leading-snug ${headlineStrongCls(settings.textTheme)}`}>
         <span className="sr-only">
           {t.clockLabel(date, meridiem ? `${time} ${meridiem}` : time, timeZoneName)}
         </span>

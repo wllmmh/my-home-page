@@ -137,7 +137,6 @@ describe('folder tree', () => {
         editing={editing}
         onEdit={noop}
         onRemove={noop}
-        onAdd={noop}
         onMove={noop}
         onMoveRequest={noop}
         onSelect={noop}
@@ -148,12 +147,34 @@ describe('folder tree', () => {
 
   it('names every row action after its row', () => {
     renderTree()
-    expect(screen.getByRole('button', { name: 'Add folder in Work' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Add bookmark in Work' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Rename Work' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Delete Work' })).toBeInTheDocument()
     // A link row renames as "Edit", a folder as "Rename".
     expect(screen.getByRole('button', { name: 'Edit News' })).toBeInTheDocument()
+  })
+
+  it('has no per-folder add buttons, and the root add buttons name the active folder', () => {
+    const { rerender } = renderTree()
+    expect(screen.queryByRole('button', { name: /^Add (folder|bookmark) in/ })).toBeNull()
+    expect(screen.getByRole('button', { name: 'New folder' })).toBeInTheDocument()
+
+    rerender(
+      <FolderTree
+        tree={sampleTree()}
+        selectedId="f1"
+        newTab={false}
+        editing
+        onEdit={noop}
+        onRemove={noop}
+        onMove={noop}
+        onMoveRequest={noop}
+        onSelect={noop}
+        rootLabel="Bookmarks"
+        onAddRoot={noop}
+      />
+    )
+    expect(screen.getByRole('button', { name: 'Add folder in Work' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add bookmark in Work' })).toBeInTheDocument()
   })
 
   it('leaves no control unnamed', () => {

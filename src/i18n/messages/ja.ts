@@ -87,6 +87,8 @@ const ja: Messages = {
   renameNamed: (name) => `${name} の名前を変更`,
   addFolderIn: (name) => `${name} にフォルダーを追加`,
   addLinkIn: (name) => `${name} にブックマークを追加`,
+  openAllInNewTabs: 'すべて新しいタブで開く',
+  renameOrChangeIcon: '名前とアイコンを変更',
   moveNamed: (name) => `${name} を移動`,
   iconNamed: (name) => `アイコン: ${name}`,
 

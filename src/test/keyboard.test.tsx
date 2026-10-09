@@ -27,7 +27,6 @@ const renderTree = (props: Partial<Parameters<typeof FolderTree>[0]> = {}) =>
       editing
       onEdit={noop}
       onRemove={noop}
-      onAdd={noop}
       onMove={noop}
       onMoveRequest={noop}
       onSelect={noop}
@@ -222,7 +221,6 @@ describe('control placement', () => {
           editing
           onEdit={noop}
           onRemove={noop}
-          onAdd={noop}
           onMove={noop}
           onMoveRequest={noop}
           onSelect={noop}

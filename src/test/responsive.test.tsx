@@ -109,7 +109,6 @@ describe('touch targets', () => {
         editing
         onEdit={() => {}}
         onRemove={() => {}}
-        onAdd={() => {}}
         onMove={() => {}}
         onMoveRequest={() => {}}
         onSelect={() => {}}
@@ -141,7 +140,6 @@ describe('touch targets', () => {
         editing
         onEdit={() => {}}
         onRemove={() => {}}
-        onAdd={() => {}}
         onMove={() => {}}
         onMoveRequest={() => {}}
         onSelect={() => {}}
@@ -251,7 +249,6 @@ describe('bookmarks empty state', () => {
         newTab={false}
         onEdit={() => {}}
         onRemove={() => {}}
-        onAdd={() => {}}
         onMove={() => {}}
         onMoveRequest={() => {}}
         onSelect={() => {}}
@@ -268,13 +265,17 @@ describe('bookmarks empty state', () => {
     // against, and kibo-ui's TreeProvider wrapper (a plain `w-full` block,
     // outside this file) broke that chain silently: every class assertion on
     // this component alone still passed while the empty state rendered at
-    // its content height. So this checks the whole chain — FolderTree's root
-    // div AND the TreeProvider wrapper it renders inside — rather than one
+    // its content height. So this checks the whole chain — FolderTree's scroll
+    // area, its root div AND the TreeProvider wrapper it renders inside — rather than one
     // link of it.
     const empty = screen.getByText('Nothing here yet — add a bookmark.')
     expect(empty.className).toContain('flex-1')
 
-    const folderTreeRoot = empty.closest('.rounded-lg')
+    const scrollArea = empty.closest('.scroll-themed')
+    expect(scrollArea?.className).toContain('flex-1')
+    expect(scrollArea?.className).toContain('min-h-0')
+
+    const folderTreeRoot = scrollArea?.parentElement
     expect(folderTreeRoot?.className).toContain('flex-1')
     expect(folderTreeRoot?.className).toContain('min-h-0')
 
@@ -293,7 +294,6 @@ describe('bookmarks empty state', () => {
         newTab={false}
         onEdit={() => {}}
         onRemove={() => {}}
-        onAdd={() => {}}
         onMove={() => {}}
         onMoveRequest={() => {}}
         onSelect={() => {}}
