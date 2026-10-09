@@ -11,7 +11,7 @@ import {
 import {
   ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator,
 } from '@/components/ui/context-menu'
-import type { TreeNode as BookmarkNode, FolderNode } from './types'
+import type { TreeNode as BookmarkNode } from './types'
 import { findPath, type Anchor } from './store'
 
 const DND_MIME = 'application/x-myhomepage-node-id'
@@ -192,24 +192,28 @@ function useInnermostSticky(scrollRef: RefObject<HTMLDivElement | null>, deps: u
 
 /**
  * Right-click (or the keyboard's context-menu key / long-press) menu for a
- * folder row. `trigger` is the row itself, rendered as the menu's trigger
- * rather than wrapped in another element, so the row stays a direct child of
- * its tree node — wrapping it would end its sticky range at the wrapper.
+ * folder or bookmark row. `trigger` is the row itself, rendered as the menu's
+ * trigger rather than wrapped in another element, so the row stays a direct
+ * child of its tree node — wrapping it would end its sticky range at the
+ * wrapper.
  */
-function FolderMenu({
-  folder,
+function NodeMenu({
+  node,
   trigger,
   onEdit,
   onRemove,
 }: {
-  folder: FolderNode
+  node: BookmarkNode
   trigger: ReactElement
   onEdit: (node: BookmarkNode) => void
   onRemove: (id: string) => void
 }) {
   const { t } = useI18n()
-  // Shallow on purpose: only this folder's own bookmarks, not its subfolders'.
-  const urls = folder.children.flatMap((c) => (c.type === 'link' ? [c.url] : []))
+  // For a folder, shallow on purpose: only its own bookmarks, not its
+  // subfolders'.
+  const urls = node.type === 'link'
+    ? [node.url]
+    : node.children.flatMap((c) => (c.type === 'link' ? [c.url] : []))
 
   return (
     <ContextMenu>
@@ -220,14 +224,14 @@ function FolderMenu({
           onClick={() => urls.forEach((url) => window.open(url, '_blank', 'noopener,noreferrer'))}
         >
           <ArrowTopRightOnSquareIcon />
-          {t.openAllInNewTabs}
+          {node.type === 'link' ? t.openInNewTab : t.openAllInNewTabs}
         </ContextMenuItem>
-        <ContextMenuItem onClick={() => onEdit(folder)}>
+        <ContextMenuItem onClick={() => onEdit(node)}>
           <PencilIcon />
-          {t.renameOrChangeIcon}
+          {node.type === 'link' ? t.edit : t.renameOrChangeIcon}
         </ContextMenuItem>
         <ContextMenuSeparator />
-        <ContextMenuItem variant="destructive" onClick={() => onRemove(folder.id)}>
+        <ContextMenuItem variant="destructive" onClick={() => onRemove(node.id)}>
           <TrashIcon />
           {t.delete}
         </ContextMenuItem>
@@ -361,8 +365,8 @@ function Nodes({ nodes, parentId = null, level, query, visible, newTab, selected
     return (
       <TreeNode key={node.id} nodeId={node.id} level={level} isLast={isLast}>
         {folderNode ? (
-          <FolderMenu
-            folder={folderNode}
+          <NodeMenu
+            node={folderNode}
             onEdit={onEdit}
             onRemove={onRemove}
             trigger={
@@ -407,6 +411,11 @@ function Nodes({ nodes, parentId = null, level, query, visible, newTab, selected
             }
           />
         ) : node.type === 'link' && (
+          <NodeMenu
+            node={node}
+            onEdit={onEdit}
+            onRemove={onRemove}
+            trigger={
           <a
             href={node.url}
             title={node.url}
@@ -425,6 +434,8 @@ function Nodes({ nodes, parentId = null, level, query, visible, newTab, selected
             <TreeLines />
             <Row node={node} query={query} editing={editing} onEdit={onEdit} onRemove={onRemove} onMoveRequest={onMoveRequest} />
           </a>
+            }
+          />
         )}
         {hasChildren && folderNode && (
           <TreeNodeContent hasChildren={hasChildren}>

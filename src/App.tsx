@@ -7,6 +7,7 @@ import { LinkCard, cardBase, cardIconSlotCls, cardLabelCls } from './Cards'
 import FolderTree from './FolderTree'
 import { FolderModal, LinkModal, MoveModal, SettingsModal } from './Modal'
 import { useTree, useShortcuts, useSettings, newFolder, newLink, parseImportedTree, findPath } from './store'
+import { toBookmarkHtml } from './bookmarkHtml'
 import { useResolvedBackgroundImage } from './backgroundImageDb'
 import { I18nProvider, useI18n } from './i18n'
 import { headlineCls } from './textTheme'
@@ -143,8 +144,8 @@ function AppBody({
   }
 
   // Import a previously exported tree (the `myhomepage.tree.v1` shape) from a
-  // JSON file. Everything is validated in `parseImportedTree`; here we only
-  // deal with reading the file.
+  // JSON file, or a browser's bookmark HTML export. Everything is validated in
+  // `parseImportedTree`; here we only deal with reading the file.
   const onImportFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     // Reset immediately so picking the same file twice in a row still fires
@@ -161,20 +162,18 @@ function AppBody({
     }
   }
 
-  // Save the tree to a JSON file — the same shape `parseImportedTree` reads,
-  // so an export can always be imported back. Serialized straight from state
-  // rather than read back out of localStorage, so what lands in the file is
-  // what's on screen.
+  // Save the tree as a browser bookmark HTML file — importable by any
+  // browser, and by `parseImportedTree`, so an export can always be imported
+  // back. Serialized straight from state rather than read back out of
+  // localStorage, so what lands in the file is what's on screen.
   const onExport = () => {
     if (tree.length === 0) return
 
-    const url = URL.createObjectURL(
-      new Blob([JSON.stringify(tree, null, 2)], { type: 'application/json' })
-    )
+    const url = URL.createObjectURL(new Blob([toBookmarkHtml(tree)], { type: 'text/html' }))
     const a = document.createElement('a')
     a.href = url
     // Date-stamped so repeated exports don't all collide on one filename.
-    a.download = `bookmarks-${new Date().toISOString().slice(0, 10)}.json`
+    a.download = `bookmarks-${new Date().toISOString().slice(0, 10)}.html`
     a.click()
     // `click()` kicks the download off asynchronously, so revoking on the very
     // next line can pull the blob out from under a download that hasn't
@@ -364,7 +363,7 @@ function AppBody({
             <input
               ref={fileInputRef}
               type="file"
-              accept="application/json,.json"
+              accept="application/json,.json,text/html,.html,.htm"
               onChange={onImportFile}
               className="hidden"
             />

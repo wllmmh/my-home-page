@@ -130,8 +130,9 @@ const en = {
   renameNamed: (name: string) => `Rename ${name}`,
   addFolderIn: (name: string) => `Add folder in ${name}`,
   addLinkIn: (name: string) => `Add bookmark in ${name}`,
+  openInNewTab: 'Open in new tab',
   openAllInNewTabs: 'Open all in new tabs',
-  renameOrChangeIcon: 'Rename / change icon',
+  renameOrChangeIcon: 'Edit',
   moveNamed: (name: string) => `Move ${name}`,
   iconNamed: (name: string) => `Icon: ${name}`,
 

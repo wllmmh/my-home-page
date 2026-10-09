@@ -3,6 +3,7 @@ import { STATIC_SHORTCUTS } from './shortcuts'
 import { ICONS } from './icons'
 import type { TreeNode, FolderNode, LinkNode, Settings } from './types'
 import defaultWallpaper from './default-wallpaper.png'
+import { parseBookmarkHtml } from './bookmarkHtml'
 
 const KEY = 'myhomepage.tree.v1'
 const SHORTCUTS_KEY = 'myhomepage.shortcuts.v1'
@@ -90,8 +91,14 @@ function isSafeUrl(url: string) {
   }
 }
 
-/** Nodes parsed out of an exported-tree JSON file, or [] if it isn't one. */
+/**
+ * Nodes parsed out of an imported file, or [] if it isn't one. Accepts either
+ * an exported-tree JSON file or a browser's bookmark HTML export; throws on
+ * malformed JSON.
+ */
 export function parseImportedTree(text: string): TreeNode[] {
+  const trimmed = text.trimStart()
+  if (trimmed.startsWith('<')) return sanitizeNodes(parseBookmarkHtml(trimmed))
   return sanitizeNodes(JSON.parse(text))
 }
 
@@ -115,7 +122,7 @@ export function mergeNodes(existing: TreeNode[], incoming: TreeNode[]): TreeNode
 
 // What a fresh load gets, same idea as `DEFAULT_SHORTCUTS` for the shortcut grid.
 const DEFAULT_BOOKMARKS: TreeNode[] = [
-  { id: 'default-bookmark-0', type: 'link', name: 'williammh.github.io', url: 'https://williammh.github.io' },
+  { id: 'default-bookmark-0', type: 'link', name: 'wllmmh.github.io', url: 'https://wllmmh.github.io' },
 ]
 
 function load(): TreeNode[] {

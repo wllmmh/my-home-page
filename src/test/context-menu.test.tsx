@@ -45,7 +45,7 @@ describe('folder context menu', () => {
   it('edits and deletes the right-clicked folder', async () => {
     const { onEdit, onRemove } = setup()
     fireEvent.contextMenu(rowOf('Work'))
-    await userEvent.click(await screen.findByRole('menuitem', { name: 'Rename / change icon' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }))
     expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ id: 'f1' }))
 
     fireEvent.contextMenu(rowOf('Work'))
@@ -57,5 +57,33 @@ describe('folder context menu', () => {
     setup()
     fireEvent.contextMenu(rowOf('Empty'))
     expect(await screen.findByRole('menuitem', { name: 'Open all in new tabs' })).toHaveAttribute('aria-disabled', 'true')
+  })
+})
+
+describe('bookmark context menu', () => {
+  // The bookmarks live inside the collapsed "Work" folder.
+  const linkRow = async (name: string) => {
+    if (!screen.queryByText(name)) await userEvent.click(rowOf('Work'))
+    return (await screen.findByText(name)).closest('a')!
+  }
+
+  it('opens the right-clicked bookmark in a new tab', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    setup()
+    fireEvent.contextMenu(await linkRow('A'))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Open in new tab' }))
+    expect(open).toHaveBeenCalledWith('https://a.com', '_blank', 'noopener,noreferrer')
+    open.mockRestore()
+  })
+
+  it('edits and deletes the right-clicked bookmark', async () => {
+    const { onEdit, onRemove } = setup()
+    fireEvent.contextMenu(await linkRow('C'))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }))
+    expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ id: 'l3' }))
+
+    fireEvent.contextMenu(await linkRow('C'))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }))
+    expect(onRemove).toHaveBeenCalledWith('l3')
   })
 })

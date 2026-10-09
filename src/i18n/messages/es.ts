@@ -83,6 +83,7 @@ const es: Messages = {
   renameNamed: (name) => `Cambiar el nombre de ${name}`,
   addFolderIn: (name) => `Añadir carpeta en ${name}`,
   addLinkIn: (name) => `Añadir marcador en ${name}`,
+  openInNewTab: 'Abrir en una pestaña nueva',
   openAllInNewTabs: 'Abrir todo en pestañas nuevas',
   renameOrChangeIcon: 'Cambiar nombre o icono',
   moveNamed: (name) => `Mover ${name}`,

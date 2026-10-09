@@ -85,6 +85,7 @@ const ar: Messages = {
   renameNamed: (name) => `إعادة تسمية ${name}`,
   addFolderIn: (name) => `إضافة مجلد في ${name}`,
   addLinkIn: (name) => `إضافة إشارة مرجعية في ${name}`,
+  openInNewTab: 'فتح في علامة تبويب جديدة',
   openAllInNewTabs: 'فتح الكل في علامات تبويب جديدة',
   renameOrChangeIcon: 'إعادة التسمية / تغيير الأيقونة',
   moveNamed: (name) => `نقل ${name}`,

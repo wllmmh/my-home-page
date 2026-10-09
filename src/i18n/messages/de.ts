@@ -83,6 +83,7 @@ const de: Messages = {
   renameNamed: (name) => `${name} umbenennen`,
   addFolderIn: (name) => `Ordner in ${name} hinzufügen`,
   addLinkIn: (name) => `Lesezeichen in ${name} hinzufügen`,
+  openInNewTab: 'In neuem Tab öffnen',
   openAllInNewTabs: 'Alle in neuen Tabs öffnen',
   renameOrChangeIcon: 'Umbenennen / Symbol ändern',
   moveNamed: (name) => `${name} verschieben`,

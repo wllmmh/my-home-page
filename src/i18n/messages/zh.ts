@@ -83,6 +83,7 @@ const zh: Messages = {
   renameNamed: (name) => `重命名${name}`,
   addFolderIn: (name) => `在${name}中添加文件夹`,
   addLinkIn: (name) => `在${name}中添加书签`,
+  openInNewTab: '在新标签页中打开',
   openAllInNewTabs: '在新标签页中全部打开',
   renameOrChangeIcon: '重命名/更改图标',
   moveNamed: (name) => `移动${name}`,
