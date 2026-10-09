@@ -379,6 +379,7 @@ function AppBody({
               onMoveRequest={(node) => setModal({ kind: 'move', node })}
               rootLabel={t.bookmarks}
               onAddRoot={(kind) => setModal({ kind, target: activeFolderId })}
+              onAddIn={(kind, target) => setModal({ kind, target })}
               onToggleEditing={() => setEditingShortcuts((v) => !v)}
             />
             {/* Driven by the header menu's Import item; the input itself is

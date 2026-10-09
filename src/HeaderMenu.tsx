@@ -3,7 +3,7 @@ import { Cog6ToothIcon, ArrowUpTrayIcon, ArrowDownTrayIcon, AdjustmentsHorizonta
 import { useI18n } from './i18n'
 
 const itemCls =
-  'flex cursor-pointer select-none items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-foreground outline-none data-[highlighted]:bg-foreground/10 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground'
+  'flex cursor-pointer select-none items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-foreground outline-none data-[highlighted]:bg-foreground/10 [&_svg]:size-4 [&_svg]:shrink-0'
 
 /**
  * The app-level control cluster: everything that acts on the whole page rather

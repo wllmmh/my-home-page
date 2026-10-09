@@ -121,8 +121,8 @@ describe('header menu', () => {
 
     await user.click(screen.getByRole('button', { name: 'Menu' }))
 
-    expect(await screen.findByRole('menuitem', { name: 'Settings…' })).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: 'Import bookmarks…' })).toBeInTheDocument()
+    expect(await screen.findByRole('menuitem', { name: 'Settings' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Import bookmarks' })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: 'Export bookmarks' })).toBeInTheDocument()
   })
 })

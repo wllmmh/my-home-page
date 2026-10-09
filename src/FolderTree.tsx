@@ -202,11 +202,14 @@ function NodeMenu({
   trigger,
   onEdit,
   onRemove,
+  onAddIn,
 }: {
   node: BookmarkNode
   trigger: ReactElement
   onEdit: (node: BookmarkNode) => void
   onRemove: (id: string) => void
+  /** Add a folder/link inside this folder. Folders only. */
+  onAddIn?: (kind: 'folder' | 'link', folderId: string) => void
 }) {
   const { t } = useI18n()
   // For a folder, shallow on purpose: only its own bookmarks, not its
@@ -226,6 +229,18 @@ function NodeMenu({
           <ArrowTopRightOnSquareIcon />
           {node.type === 'link' ? t.openInNewTab : t.openAllInNewTabs}
         </ContextMenuItem>
+        {node.type === 'folder' && onAddIn && (
+          <>
+            <ContextMenuItem onClick={() => onAddIn('link', node.id)}>
+              <BookmarkSimpleIcon />
+              {t.newBookmark}
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => onAddIn('folder', node.id)}>
+              <FolderPlusIcon />
+              {t.newFolder}
+            </ContextMenuItem>
+          </>
+        )}
         <ContextMenuItem onClick={() => onEdit(node)}>
           <PencilIcon />
           {node.type === 'link' ? t.edit : t.renameOrChangeIcon}
@@ -311,13 +326,14 @@ interface NodesProps {
   onRemove: (id: string) => void
   onMove: (id: string, targetId: string | null, anchor?: Anchor) => void
   onMoveRequest: (node: BookmarkNode) => void
+  onAddIn?: (kind: 'folder' | 'link', folderId: string) => void
   draggingId: string | null
   dragOver: DragOver | null
   setDragOver: (v: DragOver | null | ((cur: DragOver | null) => DragOver | null)) => void
   onDragging: (id: string | null) => void
 }
 
-function Nodes({ nodes, parentId = null, level, query, visible, newTab, selectedId, editing, onEdit, onRemove, onMove, onMoveRequest, draggingId, dragOver, setDragOver, onDragging }: NodesProps) {
+function Nodes({ nodes, parentId = null, level, query, visible, newTab, selectedId, editing, onEdit, onRemove, onMove, onMoveRequest, onAddIn, draggingId, dragOver, setDragOver, onDragging }: NodesProps) {
   const shown = query ? nodes.filter((n) => visible?.has(n.id)) : nodes
 
   return shown.map((node, i) => {
@@ -369,6 +385,7 @@ function Nodes({ nodes, parentId = null, level, query, visible, newTab, selected
             node={folderNode}
             onEdit={onEdit}
             onRemove={onRemove}
+            onAddIn={onAddIn}
             trigger={
           <TreeNodeTrigger
             // Sticky so the folder you're scrolling through keeps its header
@@ -453,6 +470,7 @@ function Nodes({ nodes, parentId = null, level, query, visible, newTab, selected
               onRemove={onRemove}
               onMove={onMove}
               onMoveRequest={onMoveRequest}
+              onAddIn={onAddIn}
               dragOver={dragOver}
               setDragOver={setDragOver}
               onDragging={onDragging}
@@ -487,6 +505,7 @@ export default function FolderTree({
   onSelect,
   rootLabel,
   onAddRoot,
+  onAddIn,
   onToggleEditing,
 }: {
   tree: BookmarkNode[]
@@ -505,6 +524,8 @@ export default function FolderTree({
   rootLabel?: string
   /** Add a folder/link to the active folder (see `selectedId`), from the root row's buttons. */
   onAddRoot?: (kind: 'folder' | 'link') => void
+  /** Add a folder/link inside a specific folder, from its context menu. */
+  onAddIn?: (kind: 'folder' | 'link', folderId: string) => void
   /** Flip `editing` on and off. The toggle sits on the root row because the
       mode it controls covers this tree as well as the shortcut grid above. */
   onToggleEditing?: () => void
@@ -657,6 +678,7 @@ export default function FolderTree({
                 onRemove={onRemove}
                 onMove={onMove}
                 onMoveRequest={onMoveRequest}
+                onAddIn={onAddIn}
                 draggingId={dragging}
                 dragOver={dragOver}
                 setDragOver={setDragOver}

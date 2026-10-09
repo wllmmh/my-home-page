@@ -54,7 +54,7 @@ const en = {
   // The two data actions read as full sentences in the menu, where there is
   // room for them and no icon to lean on; the bare verbs are gone with the
   // toolbar that used to hold them.
-  importBookmarks: 'Import bookmarks…',
+  importBookmarks: 'Import bookmarks',
   exportBookmarks: 'Export bookmarks',
   // Names the gear itself, which now opens a menu rather than going straight
   // to the settings dialog.
@@ -68,7 +68,7 @@ const en = {
   // what it does rather than for the row it sits on.
   editShortcuts: 'Edit shortcuts and bookmarks',
   doneEditingShortcuts: 'Done editing',
-  settingsMenuItem: 'Settings…',
+  settingsMenuItem: 'Settings',
   dropToTopLevel: 'Drop here to move to top level',
   treeEmpty: 'Nothing here yet — add a bookmark.',
   // The query is quoted inside the message so a language can use its own

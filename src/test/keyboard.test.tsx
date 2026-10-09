@@ -177,7 +177,7 @@ describe('control placement', () => {
     expect(onOpenSettings).not.toHaveBeenCalled()
 
     await user.click(screen.getByRole('button', { name: 'Menu' }))
-    await user.click(await screen.findByRole('menuitem', { name: 'Import bookmarks…' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Import bookmarks' }))
     expect(onImport).toHaveBeenCalledOnce()
   })
 
@@ -191,12 +191,12 @@ describe('control placement', () => {
     const trigger = screen.getByRole('button', { name: 'Menu' })
     trigger.focus()
     await user.keyboard('{Enter}')
-    expect(await screen.findByRole('menuitem', { name: 'Settings…' })).toBeInTheDocument()
+    expect(await screen.findByRole('menuitem', { name: 'Settings' })).toBeInTheDocument()
 
     // Escape must both close the menu and hand focus back to the trigger,
     // otherwise a keyboard user is dropped at the top of the document.
     await user.keyboard('{Escape}')
-    expect(screen.queryByRole('menuitem', { name: 'Settings…' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Settings' })).not.toBeInTheDocument()
     expect(document.activeElement).toBe(trigger)
   })
 

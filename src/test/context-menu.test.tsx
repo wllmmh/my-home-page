@@ -20,14 +20,15 @@ const tree: TreeNode[] = [
 function setup() {
   const onEdit = vi.fn()
   const onRemove = vi.fn()
+  const onAddIn = vi.fn()
   renderWithI18n(
     <FolderTree
       tree={tree} selectedId={null} newTab={false}
       onEdit={onEdit} onRemove={onRemove} onMove={vi.fn()} onMoveRequest={vi.fn()}
-      onSelect={vi.fn()} rootLabel="Bookmarks" onAddRoot={vi.fn()}
+      onSelect={vi.fn()} rootLabel="Bookmarks" onAddRoot={vi.fn()} onAddIn={onAddIn}
     />
   )
-  return { onEdit, onRemove }
+  return { onEdit, onRemove, onAddIn }
 }
 
 const rowOf = (name: string) => screen.getByText(name).closest('[data-folder-row]')!
@@ -53,6 +54,17 @@ describe('folder context menu', () => {
     expect(onRemove).toHaveBeenCalledWith('f1')
   })
 
+  it('adds a bookmark or folder inside the right-clicked folder', async () => {
+    const { onAddIn } = setup()
+    fireEvent.contextMenu(rowOf('Work'))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'New bookmark' }))
+    expect(onAddIn).toHaveBeenLastCalledWith('link', 'f1')
+
+    fireEvent.contextMenu(rowOf('Empty'))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'New folder' }))
+    expect(onAddIn).toHaveBeenLastCalledWith('folder', 'f3')
+  })
+
   it('disables opening tabs for a folder with no bookmarks', async () => {
     setup()
     fireEvent.contextMenu(rowOf('Empty'))
@@ -74,6 +86,13 @@ describe('bookmark context menu', () => {
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Open in new tab' }))
     expect(open).toHaveBeenCalledWith('https://a.com', '_blank', 'noopener,noreferrer')
     open.mockRestore()
+  })
+
+  it('does not offer adding items', async () => {
+    setup()
+    fireEvent.contextMenu(await linkRow('A'))
+    await screen.findByRole('menuitem', { name: 'Open in new tab' })
+    expect(screen.queryByRole('menuitem', { name: 'New bookmark' })).toBeNull()
   })
 
   it('edits and deletes the right-clicked bookmark', async () => {
